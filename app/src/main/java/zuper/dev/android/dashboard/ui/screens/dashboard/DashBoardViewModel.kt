@@ -50,7 +50,7 @@ class DashBoardViewModel @Inject constructor(private val dataRepository: DataRep
     // This function is to calculate all chart related data
     private inline fun <reified T> calculateChartData(data: List<T>): List<ChartData> {
         val chartResponseList: MutableList<ChartData> = mutableListOf()
-        Log.d("viewMode", "calculateChartData: $data ")
+
         val statusCountMap = when (T::class) {
             JobApiModel::class -> {
                 (data as? List<JobApiModel>)?.groupingBy { it.status }
@@ -83,7 +83,7 @@ class DashBoardViewModel @Inject constructor(private val dataRepository: DataRep
                 val jobList = data as? List<JobApiModel>
                 "${
                     (jobList?.count { it.status == JobStatus.Completed })
-                } out of ${(jobList?.size)}"
+                } out of ${(jobList?.size)} completed"
             }
 
             InvoiceApiModel::class -> {
@@ -97,8 +97,6 @@ class DashBoardViewModel @Inject constructor(private val dataRepository: DataRep
 
             else -> "0"
         }
-
-        Log.d("viewMode", "calculateChartData: $data ")
         statusCountMap?.let { map ->
             val totalCount = map.values.sum()
 

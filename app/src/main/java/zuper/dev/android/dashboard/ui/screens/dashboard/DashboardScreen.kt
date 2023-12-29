@@ -41,26 +41,50 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.hilt.navigation.compose.hiltViewModel
-import dagger.hilt.android.lifecycle.HiltViewModel
 import zuper.dev.android.dashboard.data.model.ChartData
 import zuper.dev.android.dashboard.data.model.InvoiceStatus
 import zuper.dev.android.dashboard.data.model.JobStatus
+import zuper.dev.android.dashboard.ui.navigation.Screen
 import zuper.dev.android.dashboard.ui.theme.Blue
 import zuper.dev.android.dashboard.ui.theme.Green
 import zuper.dev.android.dashboard.ui.theme.Purple
 import zuper.dev.android.dashboard.ui.theme.Red
 import zuper.dev.android.dashboard.ui.theme.Yellow
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DashBoardScreen(
-    navHostController: NavHostController,
+    navHostController: NavHostController
+
 ) {
     AppTheme {
         // A surface container using the 'background' color from the theme
         Surface(
             modifier = Modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.background
         ) {
-            TopBar()
+            Column {
+                TopAppBar(title = {
+                    Text(
+                        text = "Dashboard",
+                        color = Color.Black,
+                        style = MaterialTheme.typography.titleLarge
+
+                    )
+                })
+                Divider(
+                    color = Color.Gray, modifier = Modifier
+                        .fillMaxWidth()
+                        .height(.5.dp)
+                )
+                ProfileCard()
+                JobStatsCard(onClick = {
+                    Log.d("onClick", "DashBoardScreen: ")
+                    navHostController.navigate(Screen.Jobs.name)
+                })
+                InvoiceStatsCard()
+
+            }
+
 
         }
     }
@@ -122,7 +146,7 @@ fun RowWithRectangles(items: List<List<ChartData>>) {
 
 
 @Composable
-fun ChartCard(completionText: String, data: List<ChartData>) {
+fun Chart(completionText: String, data: List<ChartData>) {
     Row(
         horizontalArrangement = Arrangement.SpaceBetween,
         modifier = Modifier
@@ -197,28 +221,6 @@ fun ChartCard(completionText: String, data: List<ChartData>) {
 
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun TopBar() {
-    Column {
-        TopAppBar(title = {
-            Text(
-                text = "Dashboard", color = Color.Black, style = MaterialTheme.typography.titleLarge
-
-            )
-        })
-        Divider(
-            color = Color.Gray, modifier = Modifier
-                .fillMaxWidth()
-                .height(.5.dp)
-        )
-        ProfileCard()
-        JobStatsCard()
-        InvoiceStatsCard()
-
-    }
-
-}
 
 @Composable
 fun ProfileCard() {
@@ -278,7 +280,10 @@ fun ProfileCard() {
 }
 
 @Composable
-fun JobStatsCard(viewModel: DashBoardViewModel = hiltViewModel()) {
+fun JobStatsCard(
+    onClick: () -> Unit,
+    viewModel: DashBoardViewModel = hiltViewModel()
+) {
     val jobsState = viewModel.jobsStateFlow.collectAsState(initial = emptyList())
     LaunchedEffect(key1 = jobsState) {
         viewModel.observeJobs()
@@ -312,7 +317,7 @@ fun JobStatsCard(viewModel: DashBoardViewModel = hiltViewModel()) {
         if (jobsState.value.isEmpty()) {
             Text(text = "Loading...")
         } else {
-            ChartCard(
+            Chart(
                 completionText = jobsState.value[0].completion,
                 data = jobsState.value.sortedByDescending { it.value })
         }
@@ -355,7 +360,7 @@ fun InvoiceStatsCard(viewModel: DashBoardViewModel = hiltViewModel()) {
         if (invoiceState.value.isEmpty()) {
             Text(text = "Loading...")
         } else {
-            ChartCard(
+            Chart(
                 completionText = invoiceState.value[0].completion,
                 data = invoiceState.value.sortedByDescending { it.value })
         }
@@ -384,7 +389,6 @@ private fun DefaultPreview() {
         Surface(
             modifier = Modifier.wrapContentSize(), color = MaterialTheme.colorScheme.background
         ) {
-            TopBar()
         }
     }
 }
