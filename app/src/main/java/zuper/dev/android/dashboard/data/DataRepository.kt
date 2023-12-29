@@ -4,8 +4,9 @@ import kotlinx.coroutines.flow.Flow
 import zuper.dev.android.dashboard.data.model.InvoiceApiModel
 import zuper.dev.android.dashboard.data.model.JobApiModel
 import zuper.dev.android.dashboard.data.remote.ApiDataSource
+import javax.inject.Inject
 
-class DataRepository(private val apiDataSource: ApiDataSource) {
+class DataRepository @Inject constructor(private val apiDataSource: ApiDataSource) {
 
     /**
      * This API returns jobs in realtime using which stats can be computed
