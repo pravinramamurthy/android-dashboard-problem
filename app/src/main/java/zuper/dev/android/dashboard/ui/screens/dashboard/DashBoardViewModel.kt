@@ -1,6 +1,5 @@
 package zuper.dev.android.dashboard.ui.screens.dashboard
 
-import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -114,6 +113,13 @@ class DashBoardViewModel @Inject constructor(private val dataRepository: DataRep
         }
 
         return chartResponseList
+    }
+
+    private val _jobsChartData = MutableStateFlow<List<ChartData>>(emptyList())
+    val jobsChartData: StateFlow<List<ChartData>> = _jobsChartData.asStateFlow()
+
+    fun setList(list: List<ChartData>) {
+        _jobsChartData.value = list
     }
 
 

@@ -37,6 +37,7 @@ import zuper.dev.android.dashboard.ui.theme.AppTheme
 import java.text.SimpleDateFormat
 import java.util.Date
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.material3.CardDefaults
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -54,11 +55,10 @@ import zuper.dev.android.dashboard.ui.theme.Yellow
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DashBoardScreen(
-    navHostController: NavHostController
-
+    navHostController: NavHostController,
+    viewModel: DashBoardViewModel
 ) {
     AppTheme {
-        // A surface container using the 'background' color from the theme
         Surface(
             modifier = Modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.background
         ) {
@@ -77,9 +77,10 @@ fun DashBoardScreen(
                         .height(.5.dp)
                 )
                 ProfileCard()
-                JobStatsCard(onClick = {
-                    Log.d("onClick", "DashBoardScreen: ")
+                JobStatsCard(onClickNav = {
+                    viewModel.setList(it)
                     navHostController.navigate(Screen.Jobs.name)
+
                 })
                 InvoiceStatsCard()
 
@@ -146,7 +147,7 @@ fun RowWithRectangles(items: List<List<ChartData>>) {
 
 
 @Composable
-fun Chart(completionText: String, data: List<ChartData>) {
+fun Chart(completionText: String, data: List<ChartData>, showRect: Boolean) {
     Row(
         horizontalArrangement = Arrangement.SpaceBetween,
         modifier = Modifier
@@ -216,8 +217,11 @@ fun Chart(completionText: String, data: List<ChartData>) {
         }
 
     }
-    val pairedItems = data.chunked(2)
-    RowWithRectangles(pairedItems)
+    if (showRect) {
+        val pairedItems = data.chunked(2)
+        RowWithRectangles(pairedItems)
+    }
+
 
 }
 
@@ -279,29 +283,27 @@ fun ProfileCard() {
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun JobStatsCard(
-    onClick: () -> Unit,
+    onClickNav: (jobsChartData: List<ChartData>) -> Unit,
     viewModel: DashBoardViewModel = hiltViewModel()
 ) {
     val jobsState = viewModel.jobsStateFlow.collectAsState(initial = emptyList())
     LaunchedEffect(key1 = jobsState) {
         viewModel.observeJobs()
     }
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .wrapContentHeight()
-            .padding(8.dp, 16.dp)
-            .border(.2.dp, Color.Gray, shape = RoundedCornerShape(8.dp)),
+    Card(modifier = Modifier
+        .fillMaxWidth()
+        .wrapContentHeight()
+        .padding(8.dp, 16.dp)
+        .clickable { onClickNav(jobsState.value) }
+        .border(.2.dp, Color.Gray, shape = RoundedCornerShape(8.dp)),
         elevation = CardDefaults.cardElevation(
             defaultElevation = 8.dp
-        ),
-        shape = RoundedCornerShape(8.dp),
-        colors = CardDefaults.cardColors(
+        ), shape = RoundedCornerShape(8.dp), colors = CardDefaults.cardColors(
             containerColor = Color.White,
-        )
-    ) {
+        )) {
         Text(
             modifier = Modifier.padding(8.dp),
             text = "Jobs Stats",
@@ -319,7 +321,9 @@ fun JobStatsCard(
         } else {
             Chart(
                 completionText = jobsState.value[0].completion,
-                data = jobsState.value.sortedByDescending { it.value })
+                data = jobsState.value.sortedByDescending { it.value },
+                showRect = true
+            )
         }
 
     }
@@ -362,7 +366,9 @@ fun InvoiceStatsCard(viewModel: DashBoardViewModel = hiltViewModel()) {
         } else {
             Chart(
                 completionText = invoiceState.value[0].completion,
-                data = invoiceState.value.sortedByDescending { it.value })
+                data = invoiceState.value.sortedByDescending { it.value },
+                showRect = true
+            )
         }
 
     }
@@ -388,7 +394,6 @@ private fun DefaultPreview() {
         // A surface container using the 'background' color from the theme
         Surface(
             modifier = Modifier.wrapContentSize(), color = MaterialTheme.colorScheme.background
-        ) {
-        }
+        ) {}
     }
 }
