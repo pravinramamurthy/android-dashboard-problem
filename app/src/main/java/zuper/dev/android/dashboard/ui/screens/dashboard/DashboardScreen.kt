@@ -38,39 +38,38 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import androidx.compose.foundation.border
 import androidx.compose.material3.CardDefaults
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.hilt.navigation.compose.hiltViewModel
-
-
-val slices = listOf(
-    Slice(value = 14.6f, color = Color(0XFFe31a1a), text = "55"),
-    Slice(value = 61.8f, color = Color(0XFF377eb8), text = "233"),
-    Slice(value = 23.6f, color = Color(0XFF49a345), text = "89")
-)
-val items = listOf(
-    Item(Color.Blue, "Item 1"),
-    Item(Color.Green, "Item 2"),
-    Item(Color.Red, "Item 3"),
-    // Add more items as needed
-)
-val pairedItems = items.chunked(2)
-
-data class Slice(val value: Float, val color: Color, val text: String)
-data class Item(val color: Color, val text: String)
+import dagger.hilt.android.lifecycle.HiltViewModel
+import zuper.dev.android.dashboard.data.model.ChartData
+import zuper.dev.android.dashboard.data.model.InvoiceStatus
+import zuper.dev.android.dashboard.data.model.JobStatus
+import zuper.dev.android.dashboard.ui.theme.Blue
+import zuper.dev.android.dashboard.ui.theme.Green
+import zuper.dev.android.dashboard.ui.theme.Purple
+import zuper.dev.android.dashboard.ui.theme.Red
+import zuper.dev.android.dashboard.ui.theme.Yellow
 
 @Composable
 fun DashBoardScreen(
     navHostController: NavHostController,
-    viewModel: DashBoardViewModel = hiltViewModel()
 ) {
-    val jobs = viewModel.jobsStateFlow.collectAsState(initial = emptyList())
-    Log.d("DashBoardScreen", "jobs: ${jobs.value} ")
-    TopBar()
+    AppTheme {
+        // A surface container using the 'background' color from the theme
+        Surface(
+            modifier = Modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.background
+        ) {
+            TopBar()
+
+        }
+    }
+
 }
 
 
 @Composable
-fun RowWithRectangles(items: List<List<Item>>) {
+fun RowWithRectangles(items: List<List<ChartData>>) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -83,7 +82,7 @@ fun RowWithRectangles(items: List<List<Item>>) {
                     .wrapContentSize()
                     .padding(vertical = 8.dp)
             ) {
-                pair.forEach { item ->
+                pair.forEach { _item ->
                     Row(
                         modifier = Modifier
 
@@ -94,14 +93,21 @@ fun RowWithRectangles(items: List<List<Item>>) {
                             modifier = Modifier
                                 .size(12.dp)
                                 .background(
-                                    color = item.color, shape = RoundedCornerShape(2.dp)
+                                    color = when (_item.status) {
+                                        JobStatus.Completed.name, InvoiceStatus.Paid.name -> Green
+                                        JobStatus.YetToStart.name -> Purple
+                                        JobStatus.InProgress.name, InvoiceStatus.Pending.name -> Blue
+                                        JobStatus.Canceled.name, InvoiceStatus.Draft.name -> Yellow
+                                        JobStatus.Incomplete.name, InvoiceStatus.BadDebt.name -> Red
+                                        else -> {}
+                                    } as Color
                                 ), contentAlignment = Alignment.Center
                         ) {
                             // Small rectangle
                         }
                         Text(
                             modifier = Modifier.padding(6.dp, 0.dp),
-                            text = "yet to start(12)",
+                            text = _item.status + "(${_item.count})",
                             fontWeight = FontWeight.Bold,
                             style = MaterialTheme.typography.titleSmall,
                             color = Color.Gray
@@ -116,7 +122,7 @@ fun RowWithRectangles(items: List<List<Item>>) {
 
 
 @Composable
-fun ChartCard() {
+fun ChartCard(completionText: String, data: List<ChartData>) {
     Row(
         horizontalArrangement = Arrangement.SpaceBetween,
         modifier = Modifier
@@ -128,14 +134,14 @@ fun ChartCard() {
 
         ) {
         Text(
-            text = "60 Jobs",
+            text = data[0].total,
             fontWeight = FontWeight.Bold,
             style = MaterialTheme.typography.titleSmall,
             color = Color.Gray
 
         )
         Text(
-            text = "20 out of 60 completed",
+            text = completionText,
             fontWeight = FontWeight.Bold,
             style = MaterialTheme.typography.titleSmall,
             color = Color.Gray
@@ -150,13 +156,13 @@ fun ChartCard() {
     ) {
 
 
-        slices.forEachIndexed { index, slice ->
+        data.forEachIndexed { index, item ->
             val isFirst = index == 0
-            val isLast = index == slices.size - 1
+            val isLast = index == data.size - 1
             Column(
                 modifier = Modifier
                     .wrapContentSize()
-                    .weight(slice.value),
+                    .weight(item.value),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Box(
@@ -170,15 +176,23 @@ fun ChartCard() {
                                 else -> RoundedCornerShape(0.dp)
                             }
                         )
-                        .background(color = slice.color),
-
-                    )
+                        .background(
+                            color = when (item.status) {
+                                JobStatus.Completed.name, InvoiceStatus.Paid.name -> Green
+                                JobStatus.YetToStart.name -> Purple
+                                JobStatus.InProgress.name, InvoiceStatus.Pending.name -> Blue
+                                JobStatus.Canceled.name, InvoiceStatus.Draft.name -> Yellow
+                                JobStatus.Incomplete.name, InvoiceStatus.BadDebt.name -> Red
+                                else -> {}
+                            } as Color
+                        )
+                )
 
             }
         }
 
     }
-
+    val pairedItems = data.chunked(2)
     RowWithRectangles(pairedItems)
 
 }
@@ -198,10 +212,10 @@ fun TopBar() {
                 .fillMaxWidth()
                 .height(.5.dp)
         )
-
         ProfileCard()
         JobStatsCard()
         InvoiceStatsCard()
+
     }
 
 }
@@ -264,7 +278,11 @@ fun ProfileCard() {
 }
 
 @Composable
-fun JobStatsCard() {
+fun JobStatsCard(viewModel: DashBoardViewModel = hiltViewModel()) {
+    val jobsState = viewModel.jobsStateFlow.collectAsState(initial = emptyList())
+    LaunchedEffect(key1 = jobsState) {
+        viewModel.observeJobs()
+    }
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -281,7 +299,7 @@ fun JobStatsCard() {
     ) {
         Text(
             modifier = Modifier.padding(8.dp),
-            text = "Jobs",
+            text = "Jobs Stats",
             color = Color.Black,
             fontWeight = FontWeight.Bold,
             style = MaterialTheme.typography.bodyLarge
@@ -291,12 +309,23 @@ fun JobStatsCard() {
                 .fillMaxWidth()
                 .height(.5.dp)
         )
-        ChartCard()
+        if (jobsState.value.isEmpty()) {
+            Text(text = "Loading...")
+        } else {
+            ChartCard(
+                completionText = jobsState.value[0].completion,
+                data = jobsState.value.sortedByDescending { it.value })
+        }
+
     }
 }
 
 @Composable
-fun InvoiceStatsCard() {
+fun InvoiceStatsCard(viewModel: DashBoardViewModel = hiltViewModel()) {
+    val invoiceState = viewModel.invoiceStateFlow.collectAsState(initial = emptyList())
+    LaunchedEffect(key1 = invoiceState) {
+        viewModel.observeInvoice()
+    }
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -313,7 +342,7 @@ fun InvoiceStatsCard() {
     ) {
         Text(
             modifier = Modifier.padding(8.dp),
-            text = "Jobs",
+            text = "Invoice Stats",
             color = Color.Black,
             fontWeight = FontWeight.Bold,
             style = MaterialTheme.typography.bodyLarge
@@ -323,7 +352,14 @@ fun InvoiceStatsCard() {
                 .fillMaxWidth()
                 .height(.5.dp)
         )
-        ChartCard()
+        if (invoiceState.value.isEmpty()) {
+            Text(text = "Loading...")
+        } else {
+            ChartCard(
+                completionText = invoiceState.value[0].completion,
+                data = invoiceState.value.sortedByDescending { it.value })
+        }
+
     }
 }
 
