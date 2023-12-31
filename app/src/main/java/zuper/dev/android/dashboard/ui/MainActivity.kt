@@ -1,4 +1,4 @@
-package zuper.dev.android.dashboard
+package zuper.dev.android.dashboard.ui
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity

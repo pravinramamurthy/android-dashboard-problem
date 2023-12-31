@@ -7,6 +7,7 @@ data class ChartData(
     val status: String,
     val count: String,
     val total: String,
-    val completion:String
+    val completion: String,
+    val jobList: List<JobApiModel>
 )
 

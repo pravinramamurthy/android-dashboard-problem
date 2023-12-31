@@ -3,15 +3,19 @@ package zuper.dev.android.dashboard.ui.screens.dashboard
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 import zuper.dev.android.dashboard.data.DataRepository
 import zuper.dev.android.dashboard.data.model.ChartData
 import zuper.dev.android.dashboard.data.model.InvoiceApiModel
 import zuper.dev.android.dashboard.data.model.InvoiceStatus
 import zuper.dev.android.dashboard.data.model.JobApiModel
+import zuper.dev.android.dashboard.data.model.JobScreenData
 import zuper.dev.android.dashboard.data.model.JobStatus
 import javax.inject.Inject
 
@@ -19,7 +23,7 @@ import javax.inject.Inject
 class DashBoardViewModel @Inject constructor(private val dataRepository: DataRepository) :
     ViewModel() {
 
-
+    private var jobsList: List<JobApiModel> = emptyList()
     private val _jobsStateFlow: MutableStateFlow<List<ChartData>> = MutableStateFlow(emptyList())
     val jobsStateFlow: StateFlow<List<ChartData>> = _jobsStateFlow.asStateFlow()
 
@@ -28,6 +32,7 @@ class DashBoardViewModel @Inject constructor(private val dataRepository: DataRep
         viewModelScope.launch {
             val response = dataRepository.observeJobs()
             response.collect {
+                jobsList = it
                 _jobsStateFlow.emit(calculateChartData(it))
             }
         }
@@ -96,6 +101,17 @@ class DashBoardViewModel @Inject constructor(private val dataRepository: DataRep
 
             else -> "0"
         }
+        val jobListDate =
+            when (T::class) {
+                JobApiModel::class -> {
+                    val jobList = data as? List<JobApiModel>
+                    jobList ?: emptyList()
+                }
+
+                else -> {
+                    emptyList<JobApiModel>()
+                }
+            }
         statusCountMap?.let { map ->
             val totalCount = map.values.sum()
 
@@ -106,7 +122,8 @@ class DashBoardViewModel @Inject constructor(private val dataRepository: DataRep
                     status = status.name,
                     count = count.toString(),
                     total = totalSum,
-                    completion = paidAmount
+                    completion = paidAmount,
+                    jobList = jobListDate
                 )
                 chartResponseList += chartData
             }
@@ -115,11 +132,13 @@ class DashBoardViewModel @Inject constructor(private val dataRepository: DataRep
         return chartResponseList
     }
 
-    private val _jobsChartData = MutableStateFlow<List<ChartData>>(emptyList())
-    val jobsChartData: StateFlow<List<ChartData>> = _jobsChartData.asStateFlow()
+    private val _jobsChartData = Channel<List<ChartData>>()
+    val jobsChartData: Flow<List<ChartData>> = _jobsChartData.receiveAsFlow()
 
     fun setList(list: List<ChartData>) {
-        _jobsChartData.value = list
+        viewModelScope.launch {
+            _jobsChartData.send(list)
+        }
     }
 
 
