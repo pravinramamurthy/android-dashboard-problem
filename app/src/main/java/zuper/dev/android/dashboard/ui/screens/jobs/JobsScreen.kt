@@ -59,6 +59,9 @@ import zuper.dev.android.dashboard.ui.screens.dashboard.DashBoardViewModel
 import zuper.dev.android.dashboard.ui.screens.dashboard.InvoiceStatsCard
 import zuper.dev.android.dashboard.ui.screens.dashboard.ProfileCard
 import zuper.dev.android.dashboard.ui.theme.AppTheme
+import java.time.LocalDate
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
 import kotlin.math.log
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -82,8 +85,9 @@ fun JobsScreen(
                             Icon(
                                 Icons.Default.ArrowBack,
                                 contentDescription = "",
-                                tint = Color.Black
-                            )
+                                tint = Color.Black,
+
+                                )
                         }
 
                         Text(
@@ -139,7 +143,7 @@ fun TabScreen(jobs: List<JobApiModel>) {
     val tabTitles = groupedJobs.keys.toList()
 
     var selectedTabIndex by remember { mutableStateOf(0) }
-
+    val statusCountMap = jobs.groupBy { it.status }.mapValues { it.value.size }
     Column {
         ScrollableTabRow(
             selectedTabIndex = selectedTabIndex,
@@ -147,9 +151,9 @@ fun TabScreen(jobs: List<JobApiModel>) {
             edgePadding = 0.dp,
 
             ) {
-            tabTitles.forEachIndexed { index, title ->
+            statusCountMap.entries.forEachIndexed { index, (title, count) ->
                 Tab(
-                    text = { Text(title.name) },
+                    text = { Text("${(title.name)} (${count})") },
                     selected = selectedTabIndex == index,
                     onClick = { selectedTabIndex = index }
                 )
@@ -193,8 +197,8 @@ fun JobsList(jobs: List<JobApiModel>) {
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = " ${job.startTime}- ${job.endTime}",
-                        style = MaterialTheme.typography.bodyLarge,
+                        text = " ${formatDate(job.startTime)}- ${formatDate(job.endTime)}",
+                        style = MaterialTheme.typography.bodySmall,
                         color = Color.Gray
 
 
@@ -205,6 +209,19 @@ fun JobsList(jobs: List<JobApiModel>) {
     }
 }
 
+fun formatDate(dateTimeString: String): String {
+    val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'")
+    val dateTime = LocalDateTime.parse(dateTimeString, formatter)
+    val currentDate = LocalDate.now()
+
+    return if (dateTime.toLocalDate() == currentDate) {
+        val timeFormatter = DateTimeFormatter.ofPattern("hh:mm a")
+        "Today " + dateTime.format(timeFormatter)
+    } else {
+        val dateFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy hh:mm a")
+        dateTime.format(dateFormatter)
+    }
+}
 
 @Preview(showBackground = true)
 @Composable
